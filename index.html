@@ -368,8 +368,10 @@
             "esri/layers/FeatureLayer",
             "esri/widgets/Legend",
             "esri/widgets/ScaleBar",
-            "esri/widgets/Expand"
-        ], function(WebMap, MapView, FeatureLayer, Legend, ScaleBar, Expand) {
+            "esri/widgets/Expand",
+            "esri/Graphic",
+            "esri/layers/GraphicsLayer"
+        ], function(WebMap, MapView, FeatureLayer, Legend, ScaleBar, Expand, Graphic, GraphicsLayer) {
             
             // Load Web Map from ArcGIS Online
             const webmap = new WebMap({
@@ -388,23 +390,28 @@
                 }
             });
             
-            let podcastLayer = null;
+            let interpretationLayer = null;
             let highlightHandle = null;
             let allEpisodes = [];
             let currentEpisodeIndex = 0;
+            let tooltipLayer = null;
             
             view.when(function() {
                 document.getElementById("loading").style.display = "none";
                 
+                // Create graphics layer for tooltip
+                tooltipLayer = new GraphicsLayer();
+                webmap.add(tooltipLayer);
+                
                 // Find podcast layer
                 webmap.layers.forEach(function(layer) {
                     if (layer.title && layer.title.toLowerCase().includes("podcast")) {
-                        podcastLayer = layer;
+                        interpretationLayer = layer;
                     }
                 });
                 
                 // Load all episodes
-                if (podcastLayer) {
+                if (interpretationLayer) {
                     loadEpisodes();
                 }
                 
@@ -438,7 +445,7 @@
                         const graphic = response.results[0].graphic;
                         
                         // Check if it's from podcast layer
-                        if (graphic.layer === podcastLayer) {
+                        if (graphic.layer === interpretationLayer) {
                             // Find episode index by FID
                             const clickedFid = graphic.attributes.fid || graphic.attributes.FID || graphic.attributes.OBJECTID;
                             
@@ -460,7 +467,7 @@
                 view.hitTest(event).then(function(response) {
                     if (response.results.length > 0) {
                         const graphic = response.results[0].graphic;
-                        if (graphic.layer === podcastLayer) {
+                        if (graphic.layer === interpretationLayer) {
                             view.container.style.cursor = "pointer";
                         } else {
                             view.container.style.cursor = "default";
@@ -472,12 +479,12 @@
             });
             
             function loadEpisodes() {
-                const query = podcastLayer.createQuery();
+                const query = interpretationLayer.createQuery();
                 query.where = "1=1";
                 query.outFields = ["*"];
                 query.orderByFields = ["fid ASC"];
                 
-                podcastLayer.queryFeatures(query).then(function(result) {
+                interpretationLayer.queryFeatures(query).then(function(result) {
                     allEpisodes = result.features;
                     
                     // Populate sidebar
@@ -543,9 +550,12 @@
                 }
                 
                 // Highlight selected feature
-                view.whenLayerView(podcastLayer).then(function(layerView) {
+                view.whenLayerView(interpretationLayer).then(function(layerView) {
                     highlightHandle = layerView.highlight(feature);
                 });
+                
+                // Show tooltip on map
+                showEpisodeTooltip(feature, attrs);
                 
                 // Zoom to episode location
                 view.goTo({
@@ -554,6 +564,41 @@
                 }, {
                     duration: 1000
                 });
+            }
+            
+            function showEpisodeTooltip(feature, attributes) {
+                // Clear existing tooltip
+                tooltipLayer.removeAll();
+                
+                // Get episode name (remove episode number if present)
+                const fullName = attributes.name || "Unknown Episode";
+                let displayName = fullName.split('(#')[0].trim();
+                
+                // Remove "Podcast." prefix if present
+                displayName = displayName.replace(/^Podcast\.\s*/i, '');
+                
+                // Create text symbol for tooltip
+                const textSymbol = {
+                    type: "text",
+                    color: "#1e293b",
+                    text: displayName,
+                    font: {
+                        size: 11,
+                        weight: "bold"
+                    },
+                    haloColor: "white",
+                    haloSize: 2,
+                    yoffset: -25
+                };
+                
+                // Create graphic with text
+                const tooltipGraphic = new Graphic({
+                    geometry: feature.geometry,
+                    symbol: textSymbol
+                });
+                
+                // Add to tooltip layer
+                tooltipLayer.add(tooltipGraphic);
             }
             
             function showAudioPlayer(attributes) {
@@ -621,6 +666,11 @@
                 const panel = document.getElementById("audioPanel");
                 panel.classList.remove("visible");
                 
+                // Remove tooltip
+                if (tooltipLayer) {
+                    tooltipLayer.removeAll();
+                }
+                
                 // Remove highlight when closing player
                 if (highlightHandle) {
                     highlightHandle.remove();
@@ -633,10 +683,10 @@
                 });
                 
                 // Zoom out to show all
-                if (podcastLayer) {
-                    const query = podcastLayer.createQuery();
+                if (interpretationLayer) {
+                    const query = interpretationLayer.createQuery();
                     query.where = "1=1";
-                    podcastLayer.queryExtent(query).then(function(result) {
+                    interpretationLayer.queryExtent(query).then(function(result) {
                         if (result.extent) {
                             view.goTo(result.extent.expand(1.1));
                         }
