@@ -626,7 +626,7 @@
                 const query = interpretationLayer.createQuery();
                 query.where = "1=1";
                 query.outFields = ["*"];
-                query.orderByFields = ["fid ASC"];
+                query.orderByFields = ["id ASC"];
                 
                 interpretationLayer.queryFeatures(query).then(function(result) {
                     allEpisodes = result.features;
@@ -641,9 +641,8 @@
                         div.className = "episode-item";
                         div.dataset.index = index;
                         
-                        // Extract episode number from name
-                        const match = attrs.name.match(/#(\d+)/);
-                        const episodeNum = match ? match[1] : (index + 1);
+                        // Use id field for episode number
+                        const episodeNum = attrs.id || (index + 1);
                         
                         div.innerHTML = `
                             <span class="episode-number">Episode ${episodeNum}</span>
