@@ -574,6 +574,15 @@
                 });
                 view.ui.add(legendExpand, "top-right");
                 
+                // On mobile: hide legend and move zoom to top-right
+                if (window.innerWidth <= 768) {
+                    // Hide legend on mobile
+                    view.ui.remove(legendExpand);
+                    
+                    // Move zoom controls to top-right
+                    view.ui.move("zoom", "top-right");
+                }
+                
                 // Add ScaleBar widget
                 const scaleBar = new ScaleBar({
                     view: view,
