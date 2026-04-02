@@ -878,6 +878,21 @@
     }
 
     // ==========================================
+    // MAP PADDING — keeps point visible above player
+    // ==========================================
+    function updateMapPadding() {
+        if (!window.mapView) return;
+        const panel = document.getElementById('audioPanel');
+        if (!panel.classList.contains('visible')) {
+            window.mapView.padding = { top: 0, right: 0, bottom: 0, left: 0 };
+            return;
+        }
+        // Player is visible — get its actual height
+        const playerH = panel.offsetHeight;
+        window.mapView.padding = { top: 0, right: 0, bottom: playerH, left: 0 };
+    }
+
+    // ==========================================
     // PLAYER EXPAND/COLLAPSE
     // ==========================================
     function togglePlayerExpand() {
@@ -885,6 +900,8 @@
         playerExpanded = !playerExpanded;
         panel.classList.toggle('expanded', playerExpanded);
         document.body.classList.toggle('player-expanded', playerExpanded);
+        // Update padding after transition completes
+        setTimeout(() => updateMapPadding(), 450);
     }
 
     function expandPlayer() {
@@ -923,10 +940,14 @@
         // Show tooltip
         showEpisodeTooltip(feature, attrs);
 
-        // Zoom
-        if (window.mapView) {
-            window.mapView.goTo({ target: feature.geometry, zoom: 11 }, { duration: 800 });
-        }
+        // Update map padding for player, then zoom
+        // Use timeout to let player animation start and get real height
+        setTimeout(() => {
+            updateMapPadding();
+            if (window.mapView) {
+                window.mapView.goTo({ target: feature.geometry, zoom: 11 }, { duration: 800 });
+            }
+        }, 100);
 
         // Highlight
         if (window.highlightHandle) window.highlightHandle.remove();
@@ -1009,6 +1030,9 @@
         panel.classList.remove('visible', 'expanded');
         playerExpanded = false;
         document.body.classList.remove('player-open', 'player-expanded');
+
+        // Reset map padding
+        updateMapPadding();
 
         // Stop audio by clearing iframe
         document.getElementById('playerContainer').innerHTML = '';
