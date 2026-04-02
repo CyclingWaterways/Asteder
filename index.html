@@ -40,7 +40,7 @@
             --header-height: 64px;
             --sidebar-width: 280px;
             --player-height-compact: 72px;
-            --player-height-expanded: 260px;
+            --player-height-expanded: 310px;
             --radius-sm: 6px;
             --radius-md: 12px;
             --radius-lg: 20px;
@@ -351,6 +351,19 @@
         }
 
         @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ========================================
+           SIDEBAR ADAPTS TO PLAYER
+           When player is visible, sidebar shrinks to avoid overlap
+           ======================================== */
+        body.player-open #sidebar {
+            padding-bottom: var(--player-height-compact);
+            transition: padding-bottom var(--transition-smooth);
+        }
+
+        body.player-expanded #sidebar {
+            padding-bottom: var(--player-height-expanded);
+        }
 
         /* ========================================
            AUDIO PLAYER PANEL (BOTTOM)
@@ -861,6 +874,7 @@
         const panel = document.getElementById('audioPanel');
         playerExpanded = !playerExpanded;
         panel.classList.toggle('expanded', playerExpanded);
+        document.body.classList.toggle('player-expanded', playerExpanded);
     }
 
     function expandPlayer() {
@@ -951,6 +965,7 @@
 
         // Show and auto-expand
         panel.classList.add('visible');
+        document.body.classList.add('player-open');
         if (!playerExpanded) {
             // Auto-expand after a short delay so the user sees the compact bar first
             setTimeout(() => expandPlayer(), 300);
@@ -983,6 +998,7 @@
         const panel = document.getElementById('audioPanel');
         panel.classList.remove('visible', 'expanded');
         playerExpanded = false;
+        document.body.classList.remove('player-open', 'player-expanded');
 
         // Stop audio by clearing iframe
         document.getElementById('playerContainer').innerHTML = '';
