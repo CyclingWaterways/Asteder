@@ -44,12 +44,6 @@ html, body {
 #viewDiv {
     position: fixed;
     inset: 0;
-    bottom: 0;
-    transition: bottom var(--transition-smooth);
-}
-
-body.player-open #viewDiv {
-    bottom: var(--player-height);
 }
 
 /* Loading */
@@ -293,8 +287,8 @@ function showPlayer(attrs, idx) {
     document.getElementById('audioPanel').classList.add('visible');
     document.body.classList.add('player-open');
 
-    // Update map padding
-    setTimeout(updateMapPadding, 50);
+    // Update map padding after CSS transition completes (transition is 400ms)
+    setTimeout(updateMapPadding, 450);
 }
 
 function updateMapPadding() {
@@ -365,11 +359,11 @@ function selectEpisode(idx) {
         });
     }
 
-    // Fly to point
+    // Fly to point — wait for player transition first
     setTimeout(() => {
         updateMapPadding();
         if (mapView) mapView.goTo({ target: feature.geometry, zoom: 12 }, { duration: 700 });
-    }, 100);
+    }, 450);
 }
 
 function navigatePrevious() {
