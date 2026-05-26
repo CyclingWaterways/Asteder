@@ -333,10 +333,27 @@ require([
         tooltipLayer = new GraphicsLayer();
         webmap.add(tooltipLayer);
 
+        // Hide podcast layer, dash cycling path
         webmap.layers.forEach(l => {
             if (l.title && l.title.toLowerCase().includes('podcast')) {
                 podcastLayer = l;
                 l.visible = false;
+            }
+            if (l.title && l.title.toLowerCase().includes('cycling path')) {
+                l.when(() => {
+                    const currentColor = l.renderer && l.renderer.symbol && l.renderer.symbol.color
+                        ? l.renderer.symbol.color
+                        : [200, 50, 50, 1];
+                    l.renderer = {
+                        type: 'simple',
+                        symbol: {
+                            type: 'simple-line',
+                            color: currentColor,
+                            width: 2,
+                            style: 'dash'
+                        }
+                    };
+                });
             }
         });
 
