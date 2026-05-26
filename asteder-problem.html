@@ -232,11 +232,12 @@ let highlightHandle = null;
 let GraphicClass = null;
 
 function showPanel(attrs, idx) {
-    const fullName = attrs.name || 'Location';
-    const displayName = fullName.replace(/\s*\(#\d+\)\s*$/, '').trim();
+    const lat = attrs.lat ? attrs.lat.toFixed(4) : '—';
+    const lon = attrs.lon ? attrs.lon.toFixed(4) : '—';
+    const coordLabel = lat + '° N  ' + lon + '° E';
     const id = attrs.ID || attrs.id || (idx + 1);
 
-    document.getElementById('locationTitle').textContent = displayName;
+    document.getElementById('locationTitle').textContent = coordLabel;
     document.getElementById('panelCounter').textContent = id + ' / ' + allLocations.length;
     document.getElementById('prevBtn').disabled = (idx === 0);
     document.getElementById('nextBtn').disabled = (idx === allLocations.length - 1);
@@ -276,8 +277,10 @@ function selectLocation(idx) {
 
     if (tooltipLayer && GraphicClass) {
         tooltipLayer.removeAll();
-        const name = (attrs.name || '').replace(/\s*\(#\d+\)\s*$/, '').trim();
-        // Small grey pulsing marker
+        const lat = attrs.lat ? attrs.lat.toFixed(4) : '';
+        const lon = attrs.lon ? attrs.lon.toFixed(4) : '';
+        const coordLabel = lat && lon ? lat + '° N  ' + lon + '° E' : '';
+        // Small grey marker
         tooltipLayer.add(new GraphicClass({
             geometry: feature.geometry,
             symbol: {
@@ -290,8 +293,8 @@ function selectLocation(idx) {
         tooltipLayer.add(new GraphicClass({
             geometry: feature.geometry,
             symbol: {
-                type: 'text', color: '#6B6560', text: name,
-                font: { size: 11, weight: 'bold', family: 'Source Sans 3, sans-serif' },
+                type: 'text', color: '#6B6560', text: coordLabel,
+                font: { size: 11, weight: 'normal', family: 'Source Sans 3, sans-serif' },
                 haloColor: 'white', haloSize: 2, yoffset: -20
             }
         }));
