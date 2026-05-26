@@ -312,6 +312,18 @@ html, body {
         </button>
     </div>
 
+    <div class="panel-nav">
+        <span class="panel-counter" id="panelCounter"></span>
+        <div class="panel-nav-btns">
+            <button class="panel-nav-btn" id="prevBtn" onclick="navigatePrevious()" disabled>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+            </button>
+            <button class="panel-nav-btn" id="nextBtn" onclick="navigateNext()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+        </div>
+    </div>
+
     <div class="panel-content">
         <div class="downloads-block">
             <div class="downloads-number" id="episodeDownloads">—</div>
@@ -339,18 +351,6 @@ html, body {
                 </div>
                 <div class="river-timeline" id="riverTimeline"></div>
             </div>
-        </div>
-    </div>
-
-    <div class="panel-nav">
-        <span class="panel-counter" id="panelCounter"></span>
-        <div class="panel-nav-btns">
-            <button class="panel-nav-btn" id="prevBtn" onclick="navigatePrevious()" disabled>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
-            </button>
-            <button class="panel-nav-btn" id="nextBtn" onclick="navigateNext()">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
-            </button>
         </div>
     </div>
 </div>
