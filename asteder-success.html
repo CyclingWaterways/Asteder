@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Åsteder — Success Map</title>
     <link rel="stylesheet" href="https://js.arcgis.com/4.27/esri/themes/light/main.css">
     <script src="https://js.arcgis.com/4.27/"></script>
@@ -11,263 +11,325 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Source+Sans+3:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-html, body { height: 100%; overflow: hidden; font-family: 'Source Sans 3', system-ui, sans-serif; }
+html, body {
+    height: 100%; height: 100dvh;
+    overflow: hidden;
+    font-family: 'Source Sans 3', system-ui, sans-serif;
+    background: #F4EDE4;
+    -webkit-font-smoothing: antialiased;
+}
+:root {
+    --color-forest: #1B3A2D;
+    --color-sage: #7A9E7E;
+    --color-sage-light: #B5CDB6;
+    --color-sand: #F4EDE4;
+    --color-sand-dark: #E8DFD3;
+    --color-water: #4A7F9E;
+    --color-water-light: #A8D0E6;
+    --color-text: #2D2A26;
+    --color-text-secondary: #6B6560;
+    --color-white: #FEFDFB;
+    --color-accent: #C85A3A;
+    --font-display: 'DM Serif Display', Georgia, serif;
+    --panel-height: 310px;
+    --radius-sm: 6px;
+    --radius-md: 12px;
+    --shadow-up: 0 -4px 20px rgba(27,58,45,0.12);
+    --transition-smooth: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 #viewDiv { position: fixed; inset: 0; }
 
-/* Loading */
-.loader { position: fixed; inset: 0; background: #F4EDE4; display: flex; align-items: center; justify-content: center; z-index: 9999; transition: opacity 0.6s; }
-.loader.gone { opacity: 0; pointer-events: none; }
-.loader-ring { width: 32px; height: 32px; border: 2.5px solid #E8DFD3; border-top-color: #1B3A2D; border-radius: 50%; animation: spin 0.8s linear infinite; }
+#loading {
+    position: fixed; inset: 0;
+    background: var(--color-sand);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 9999; transition: opacity 0.6s;
+}
+#loading.hidden { opacity: 0; pointer-events: none; }
+.loader-ring {
+    width: 32px; height: 32px;
+    border: 2.5px solid var(--color-sand-dark);
+    border-top-color: var(--color-forest);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
 @keyframes spin { to { transform: rotate(360deg); } }
-
-/* Hide default ArcGIS popup */
 .esri-popup { display: none !important; }
 
-/* Custom popup — top-left */
-.custom-popup {
+/* PANEL */
+#dataPanel {
     position: fixed;
-    z-index: 50;
-    top: 50px;
-    left: 25px;
-    width: 300px;
-    background: #FEFDFB;
-    border-radius: 12px;
-    box-shadow: 0 6px 30px rgba(27,58,45,0.18);
-    overflow: hidden;
-    opacity: 0;
-    transform: translateY(-10px);
-    transition: opacity 0.3s ease, transform 0.3s ease;
-    pointer-events: none;
+    bottom: 0; left: 0; right: 0;
+    height: var(--panel-height);
+    background: var(--color-white);
+    border-top: 1px solid var(--color-sand-dark);
+    box-shadow: var(--shadow-up);
+    z-index: 990;
     display: flex;
     flex-direction: column;
+    transform: translateY(100%);
+    transition: transform var(--transition-smooth);
 }
-.custom-popup.on {
-    opacity: 1;
-    transform: translateY(0);
-    pointer-events: auto;
-}
+#dataPanel.visible { transform: translateY(0); }
 
-.popup-close {
-    position: absolute; top: 10px; right: 10px; z-index: 5;
-    width: 28px; height: 28px;
-    background: rgba(27,58,45,0.6); backdrop-filter: blur(4px);
-    color: white; border: none; border-radius: 50%;
-    cursor: pointer; font-size: 15px;
+/* Title bar */
+.panel-bar {
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    height: 56px;
+    flex-shrink: 0;
+    gap: 14px;
+    border-bottom: 1px solid var(--color-sand-dark);
+}
+.panel-icon {
+    width: 36px; height: 36px;
+    background: var(--color-forest);
+    border-radius: var(--radius-md);
     display: flex; align-items: center; justify-content: center;
-}
-.popup-close:hover { background: #1B3A2D; }
-
-/* Header strip — forest green */
-.popup-header {
-    background: #1B3A2D;
-    padding: 20px 16px 16px;
-    position: relative;
-}
-
-.popup-label {
-    font-size: 9px;
-    font-weight: 600;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: #7A9E7E;
-    margin-bottom: 6px;
-}
-
-.popup-title {
-    font-family: 'DM Serif Display', Georgia, serif;
-    font-size: 17px;
-    color: #FEFDFB;
-    line-height: 1.3;
-    padding-right: 24px;
-}
-
-/* Downloads block */
-.popup-body {
-    padding: 18px 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-}
-
-.downloads-block {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    background: #F4EDE4;
-    border-radius: 8px;
-    padding: 14px 16px;
-}
-
-.downloads-icon {
-    width: 40px;
-    height: 40px;
-    background: #1B3A2D;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     flex-shrink: 0;
 }
-
-.downloads-icon svg {
-    width: 18px;
-    height: 18px;
-    color: #7A9E7E;
+.panel-icon svg { width: 16px; height: 16px; color: var(--color-sage); }
+.panel-info { flex: 1; min-width: 0; }
+#episodeTitle {
+    font-family: var(--font-display);
+    font-size: 15px;
+    color: var(--color-forest);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.3;
 }
-
-.downloads-number {
-    font-family: 'DM Serif Display', Georgia, serif;
-    font-size: 28px;
-    color: #1B3A2D;
-    line-height: 1;
+.close-btn {
+    width: 32px; height: 32px;
+    border: 1px solid var(--color-sand-dark);
+    background: var(--color-white);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: var(--transition-fast);
+    color: var(--color-text-secondary);
 }
+.close-btn:hover { background: var(--color-sand); color: var(--color-accent); }
+.close-btn svg { width: 16px; height: 16px; }
 
-.downloads-label {
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: #8B7355;
-    margin-top: 3px;
-}
-
-/* River position bar */
-.popup-position {
+/* Content */
+.panel-content {
+    flex: 1;
     display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-.position-label {
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: #6B6560;
-    display: flex;
-    justify-content: space-between;
-}
-
-.position-bar {
-    height: 4px;
-    background: #E8DFD3;
-    border-radius: 2px;
     overflow: hidden;
 }
 
-.position-fill {
-    height: 100%;
-    background: #4A7F9E;
-    border-radius: 2px;
-    transition: width 0.5s ease;
-}
-
-/* Nav */
-.popup-nav {
+/* Left — downloads + % */
+.downloads-block {
+    width: 140px;
+    flex-shrink: 0;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: space-between;
-    padding: 10px 16px;
-    border-top: 1px solid #E8DFD3;
+    justify-content: center;
+    border-right: 1px solid var(--color-sand-dark);
+    gap: 2px;
+    padding: 12px;
 }
-.popup-counter { font-size: 10px; color: #6B6560; letter-spacing: 0.04em; }
-.popup-arrows { display: flex; gap: 4px; }
-.popup-arrow {
-    width: 28px; height: 28px;
-    border: 1px solid #E8DFD3; background: #FEFDFB;
-    border-radius: 4px; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    color: #2D2A26; transition: all 0.15s;
-}
-.popup-arrow:hover { background: #F4EDE4; border-color: #B5CDB6; }
-.popup-arrow svg { width: 14px; height: 14px; }
-
-/* Total badge — bottom right corner of map */
-.total-badge {
-    position: fixed;
-    bottom: 40px;
-    right: 16px;
-    background: #1B3A2D;
-    color: #FEFDFB;
-    border-radius: 10px;
-    padding: 12px 18px;
-    z-index: 40;
-    text-align: center;
-    box-shadow: 0 4px 20px rgba(27,58,45,0.25);
-}
-.total-badge .total-number {
-    font-family: 'DM Serif Display', Georgia, serif;
-    font-size: 26px;
+.downloads-number {
+    font-family: var(--font-display);
+    font-size: 42px;
     line-height: 1;
-    color: #FEFDFB;
+    color: var(--color-forest);
 }
-.total-badge .total-label {
+.downloads-unit {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-text-secondary);
+    margin-bottom: 8px;
+}
+.pct-badge {
+    background: var(--color-sand);
+    border: 1px solid var(--color-sand-dark);
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-water);
+}
+
+/* Right — bars */
+.bars-block {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 16px 20px;
+    gap: 16px;
+}
+.bar-group { display: flex; flex-direction: column; gap: 6px; }
+.bar-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+}
+.bar-label-text {
     font-size: 9px;
     font-weight: 600;
     letter-spacing: 0.1em;
     text-transform: uppercase;
-    color: #7A9E7E;
-    margin-top: 4px;
+    color: var(--color-text-secondary);
+}
+.bar-label-value {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--color-forest);
+}
+.bar-track {
+    height: 8px;
+    background: var(--color-sand-dark);
+    border-radius: 4px;
+    overflow: hidden;
+}
+.bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.bar-fill.cumulative { background: var(--color-forest); }
+
+/* River timeline — 20 dots */
+.river-timeline {
+    position: relative;
+    height: 24px;
+    display: flex;
+    align-items: center;
+}
+.river-timeline::before {
+    content: '';
+    position: absolute;
+    left: 0; right: 0;
+    top: 50%; transform: translateY(-50%);
+    height: 2px;
+    background: var(--color-sand-dark);
+    border-radius: 1px;
+}
+.river-dot {
+    position: absolute;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--color-sand-dark);
+    border: 2px solid var(--color-white);
+    transform: translateX(-50%);
+    transition: background 0.3s ease, width 0.3s ease, height 0.3s ease, box-shadow 0.3s ease;
+    cursor: pointer;
+    z-index: 1;
+}
+.river-dot.visited {
+    background: var(--color-water-light);
+    border-color: var(--color-water);
+}
+.river-dot.active {
+    background: var(--color-water);
+    border-color: var(--color-forest);
+    width: 12px; height: 12px;
+    box-shadow: 0 0 0 3px rgba(74,127,158,0.25);
 }
 
+/* Nav */
+.panel-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    border-top: 1px solid var(--color-sand-dark);
+    flex-shrink: 0;
+}
+.panel-counter {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    letter-spacing: 0.04em;
+}
+.panel-nav-btns { display: flex; gap: 6px; }
+.panel-nav-btn {
+    width: 32px; height: 32px;
+    border: 1px solid var(--color-sand-dark);
+    background: var(--color-white);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: var(--transition-fast);
+    color: var(--color-text);
+}
+.panel-nav-btn:hover:not(:disabled) { background: var(--color-sand); border-color: var(--color-sage-light); }
+.panel-nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.panel-nav-btn svg { width: 16px; height: 16px; }
+
 .esri-ui-corner { margin: 10px; }
-.esri-widget--button { border-radius: 6px !important; }
+.esri-widget--button { border-radius: var(--radius-sm) !important; }
     </style>
 </head>
 <body>
 
-<div class="loader" id="loader"><div class="loader-ring"></div></div>
+<div id="loading"><div class="loader-ring"></div></div>
 <div id="viewDiv"></div>
 
-<!-- Total downloads badge -->
-<div class="total-badge">
-    <div class="total-number">75,000</div>
-    <div class="total-label">Total downloads</div>
-</div>
-
-<!-- Custom popup -->
-<div class="custom-popup" id="popup">
-    <button class="popup-close" onclick="app.close()">×</button>
-
-    <div class="popup-header">
-        <div class="popup-label">Åsteder — Episode</div>
-        <div class="popup-title" id="popTitle"></div>
+<div id="dataPanel">
+    <div class="panel-bar">
+        <div class="panel-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 18v-6a9 9 0 0 1 18 0v6"/>
+                <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/>
+            </svg>
+        </div>
+        <div class="panel-info">
+            <span id="episodeTitle">Select an episode</span>
+        </div>
+        <button class="close-btn" onclick="closePanel()" title="Close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+        </button>
     </div>
 
-    <div class="popup-body">
-        <!-- Downloads -->
+    <div class="panel-content">
         <div class="downloads-block">
-            <div class="downloads-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M3 18v-6a9 9 0 0 1 18 0v6"/>
-                    <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/>
-                </svg>
-            </div>
-            <div>
-                <div class="downloads-number" id="popDownloads">—</div>
-                <div class="downloads-label">downloads</div>
-            </div>
+            <div class="downloads-number" id="episodeDownloads">—</div>
+            <div class="downloads-unit">downloads</div>
+            <div class="pct-badge" id="episodePct">—%</div>
         </div>
-
-        <!-- River position -->
-        <div class="popup-position">
-            <div class="position-label">
-                <span>Source · Tinnet Krat</span>
-                <span>Randers Fjord</span>
+        <div class="bars-block">
+            <div class="bar-group">
+                <div class="bar-label">
+                    <span class="bar-label-text">Cumulative · episodes 1 to <span id="cumulLabel">1</span></span>
+                    <span class="bar-label-value" id="cumulValue">0</span>
+                </div>
+                <div class="bar-track">
+                    <div class="bar-fill cumulative" id="cumulFill" style="width:0%"></div>
+                </div>
+                <div class="bar-label" style="margin-top:2px">
+                    <span class="bar-label-text">Total · 20 episodes</span>
+                    <span class="bar-label-value">75,000</span>
+                </div>
             </div>
-            <div class="position-bar">
-                <div class="position-fill" id="positionFill" style="width: 0%"></div>
+            <div class="bar-group">
+                <div class="bar-label">
+                    <span class="bar-label-text">Tinnet Krat</span>
+                    <span class="bar-label-text">Randers Fjord</span>
+                </div>
+                <div class="river-timeline" id="riverTimeline"></div>
             </div>
         </div>
     </div>
 
-    <div class="popup-nav">
-        <span class="popup-counter" id="popCount"></span>
-        <div class="popup-arrows">
-            <button class="popup-arrow" onclick="app.prev()">
+    <div class="panel-nav">
+        <span class="panel-counter" id="panelCounter"></span>
+        <div class="panel-nav-btns">
+            <button class="panel-nav-btn" id="prevBtn" onclick="navigatePrevious()" disabled>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
             </button>
-            <button class="popup-arrow" onclick="app.next()">
+            <button class="panel-nav-btn" id="nextBtn" onclick="navigateNext()">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
             </button>
         </div>
@@ -275,132 +337,162 @@ html, body { height: 100%; overflow: hidden; font-family: 'Source Sans 3', syste
 </div>
 
 <script>
-const app = {
-    points: [], idx: -1,
-    view: null, layer: null, tooltipLayer: null, highlight: null, Graphic: null,
+const TOTAL_DOWNLOADS = 75000;
+let allEpisodes = [];
+let currentIdx = -1;
+let mapView = null;
+let podcastLayer = null;
+let tooltipLayer = null;
+let highlightHandle = null;
+let GraphicClass = null;
 
-    select(i) {
-        if (i < 0 || i >= this.points.length) return;
-        this.idx = i;
-        const f = this.points[i];
-        const a = f.attributes;
+function getDownloads(attrs) {
+    const raw = attrs.downloads || '';
+    if (!raw) return 0;
+    const num = parseFloat(raw.replace('t', ''));
+    return isNaN(num) ? 0 : Math.round(num * 1000);
+}
 
-        // Title — strip "(#N)" suffix
-        const fullName = a.name || 'Episode';
-        const displayName = fullName.replace(/\s*\(#\d+\)\s*$/, '').trim();
-
-        // Downloads — stored as e.g. "6.5t" or "3.2t" — convert to e.g. 6,500
-        const rawDl = a.downloads || '';
-        let displayDl = '—';
-        if (rawDl) {
-            const num = parseFloat(rawDl.replace('t', ''));
-            if (!isNaN(num)) {
-                displayDl = Math.round(num * 1000).toLocaleString('en-GB');
-            }
-        }
-
-        // River position — ID goes from 1 to 20
-        const id = a.ID || a.id || (i + 1);
-        const pct = Math.round(((id - 1) / 19) * 100);
-
-        document.getElementById('popTitle').textContent = displayName;
-        document.getElementById('popDownloads').textContent = displayDl;
-        document.getElementById('popCount').textContent = id + ' / ' + this.points.length;
-        document.getElementById('positionFill').style.width = pct + '%';
-
-        // Highlight
-        if (this.highlight) this.highlight.remove();
-        if (this.view && this.layer) {
-            this.view.whenLayerView(this.layer).then(lv => {
-                this.highlight = lv.highlight(f);
-            });
-        }
-
-        // Tooltip
-        if (this.tooltipLayer && this.Graphic) {
-            this.tooltipLayer.removeAll();
-            this.tooltipLayer.add(new this.Graphic({
-                geometry: f.geometry,
-                symbol: {
-                    type: 'simple-marker',
-                    color: [74, 127, 158, 0.25],
-                    size: 28,
-                    outline: { color: [74, 127, 158, 0.9], width: 3 }
-                }
-            }));
-            this.tooltipLayer.add(new this.Graphic({
-                geometry: f.geometry,
-                symbol: {
-                    type: 'text', color: '#1B3A2D', text: displayName,
-                    font: { size: 11, weight: 'bold', family: 'Source Sans 3, sans-serif' },
-                    haloColor: 'white', haloSize: 2, yoffset: -25
-                }
-            }));
-        }
-
-        // Fly to point
-        if (this.view) {
-            this.view.goTo({ target: f.geometry, zoom: 13 }, { duration: 600 }).then(() => {
-                document.getElementById('popup').classList.add('on');
-            });
-        }
-    },
-
-    close() {
-        document.getElementById('popup').classList.remove('on');
-        if (this.tooltipLayer) this.tooltipLayer.removeAll();
-        if (this.highlight) { this.highlight.remove(); this.highlight = null; }
-        this.idx = -1;
-    },
-
-    prev() {
-        if (!this.points.length) return;
-        this.select(this.idx <= 0 ? this.points.length - 1 : this.idx - 1);
-    },
-    next() {
-        if (!this.points.length) return;
-        this.select(this.idx >= this.points.length - 1 ? 0 : this.idx + 1);
+function getCumulative(upToIdx) {
+    let sum = 0;
+    for (let i = 0; i <= upToIdx; i++) {
+        if (allEpisodes[i]) sum += getDownloads(allEpisodes[i].attributes);
     }
-};
+    return sum;
+}
+
+function buildTimeline(total) {
+    const container = document.getElementById('riverTimeline');
+    container.innerHTML = '';
+    for (let i = 0; i < total; i++) {
+        const dot = document.createElement('div');
+        dot.className = 'river-dot';
+        dot.style.left = (i / (total - 1) * 100) + '%';
+        const name = allEpisodes[i] ? (allEpisodes[i].attributes.name || '').replace(/\s*\(#\d+\)\s*$/, '').trim() : '';
+        dot.title = name;
+        dot.addEventListener('click', () => selectEpisode(i));
+        container.appendChild(dot);
+    }
+}
+
+function updateTimeline(activeIdx) {
+    document.querySelectorAll('.river-dot').forEach((dot, i) => {
+        dot.classList.toggle('active', i === activeIdx);
+        dot.classList.toggle('visited', i < activeIdx);
+    });
+}
+
+function showPanel(attrs, idx) {
+    const fullName = attrs.name || 'Episode';
+    const displayName = fullName.replace(/\s*\(#\d+\)\s*$/, '').trim();
+    const dl = getDownloads(attrs);
+    const pct = ((dl / TOTAL_DOWNLOADS) * 100).toFixed(1);
+    const cumul = getCumulative(idx);
+    const cumulPct = Math.min((cumul / TOTAL_DOWNLOADS) * 100, 100).toFixed(1);
+    const id = attrs.ID || attrs.id || (idx + 1);
+
+    document.getElementById('episodeTitle').textContent = displayName;
+    document.getElementById('episodeDownloads').textContent = dl.toLocaleString('en-GB');
+    document.getElementById('episodePct').textContent = pct + '%';
+    document.getElementById('cumulLabel').textContent = idx + 1;
+    document.getElementById('cumulValue').textContent = cumul.toLocaleString('en-GB');
+    document.getElementById('cumulFill').style.width = cumulPct + '%';
+    document.getElementById('panelCounter').textContent = id + ' / ' + allEpisodes.length;
+    document.getElementById('prevBtn').disabled = (idx === 0);
+    document.getElementById('nextBtn').disabled = (idx === allEpisodes.length - 1);
+    updateTimeline(idx);
+
+    document.getElementById('dataPanel').classList.add('visible');
+    setTimeout(updateMapPadding, 450);
+}
+
+function updateMapPadding() {
+    if (!mapView) return;
+    const panel = document.getElementById('dataPanel');
+    mapView.padding = { bottom: panel.classList.contains('visible') ? panel.offsetHeight : 0 };
+}
+
+function closePanel() {
+    document.getElementById('dataPanel').classList.remove('visible');
+    if (tooltipLayer) tooltipLayer.removeAll();
+    if (highlightHandle) { highlightHandle.remove(); highlightHandle = null; }
+    currentIdx = -1;
+    updateMapPadding();
+    if (podcastLayer && mapView) {
+        const q = podcastLayer.createQuery();
+        q.where = '1=1';
+        podcastLayer.queryExtent(q).then(r => {
+            if (r.extent) mapView.goTo(r.extent.expand(1.2), { duration: 600 });
+        });
+    }
+}
+
+function selectEpisode(idx) {
+    if (idx < 0 || idx >= allEpisodes.length) return;
+    currentIdx = idx;
+    const feature = allEpisodes[idx];
+    const attrs = feature.attributes;
+
+    showPanel(attrs, idx);
+
+    if (tooltipLayer && GraphicClass) {
+        tooltipLayer.removeAll();
+        const name = (attrs.name || '').replace(/\s*\(#\d+\)\s*$/, '').trim();
+        tooltipLayer.add(new GraphicClass({
+            geometry: feature.geometry,
+            symbol: { type: 'simple-marker', color: [74,127,158,0.25], size: 26, outline: { color: [74,127,158,0.9], width: 3 } }
+        }));
+        tooltipLayer.add(new GraphicClass({
+            geometry: feature.geometry,
+            symbol: { type: 'text', color: '#1B3A2D', text: name,
+                font: { size: 11, weight: 'bold', family: 'Source Sans 3, sans-serif' },
+                haloColor: 'white', haloSize: 2, yoffset: -25 }
+        }));
+    }
+
+    if (highlightHandle) highlightHandle.remove();
+    if (mapView && podcastLayer) {
+        mapView.whenLayerView(podcastLayer).then(lv => { highlightHandle = lv.highlight(feature); });
+    }
+
+    setTimeout(() => {
+        updateMapPadding();
+        if (mapView) mapView.goTo({ target: feature.geometry, zoom: 12 }, { duration: 700 });
+    }, 450);
+}
+
+function navigatePrevious() { if (currentIdx > 0) selectEpisode(currentIdx - 1); }
+function navigateNext() { if (currentIdx < allEpisodes.length - 1) selectEpisode(currentIdx + 1); }
 
 require([
     "esri/WebMap", "esri/views/MapView", "esri/widgets/ScaleBar",
     "esri/Graphic", "esri/layers/GraphicsLayer"
 ], function(WebMap, MapView, ScaleBar, Graphic, GraphicsLayer) {
-
-    app.Graphic = Graphic;
-
+    GraphicClass = Graphic;
     const webmap = new WebMap({ portalItem: { id: "28cbdfd16ee14463b5e537e734c63b4f" } });
-    const view = new MapView({
-        container: "viewDiv",
-        map: webmap,
-        constraints: { minZoom: 8, maxZoom: 16 }
-    });
-    app.view = view;
+    const view = new MapView({ container: "viewDiv", map: webmap, constraints: { minZoom: 8, maxZoom: 16 } });
+    mapView = view;
 
     view.when(() => {
-        document.getElementById('loader').classList.add('gone');
-        setTimeout(() => document.getElementById('loader').style.display = 'none', 700);
+        const loader = document.getElementById('loading');
+        loader.classList.add('hidden');
+        setTimeout(() => loader.style.display = 'none', 700);
 
-        app.tooltipLayer = new GraphicsLayer();
-        webmap.add(app.tooltipLayer);
+        tooltipLayer = new GraphicsLayer();
+        webmap.add(tooltipLayer);
 
-        // Find podcast layer
         webmap.layers.forEach(l => {
-            if (l.title && l.title.toLowerCase().includes('podcast')) {
-                app.layer = l;
-            }
+            if (l.title && l.title.toLowerCase().includes('podcast')) podcastLayer = l;
         });
 
-        if (app.layer) {
-            app.layer.popupEnabled = false;
-            const q = app.layer.createQuery();
-            q.where = '1=1';
-            q.outFields = ['*'];
-            q.orderByFields = ['ID ASC'];
-            app.layer.queryFeatures(q).then(r => {
-                app.points = r.features;
-                if (app.points.length) app.select(0);
+        if (podcastLayer) {
+            podcastLayer.popupEnabled = false;
+            const q = podcastLayer.createQuery();
+            q.where = '1=1'; q.outFields = ['*']; q.orderByFields = ['ID ASC'];
+            podcastLayer.queryFeatures(q).then(r => {
+                allEpisodes = r.features;
+                buildTimeline(allEpisodes.length);
+                if (allEpisodes.length) selectEpisode(0);
             });
         }
 
@@ -410,21 +502,21 @@ require([
 
     view.on('click', e => {
         view.hitTest(e).then(r => {
-            if (!r.results.length) { app.close(); return; }
+            if (!r.results.length) return;
             const g = r.results[0].graphic;
-            if (g.layer !== app.layer) { app.close(); return; }
+            if (g.layer !== podcastLayer) return;
             const fid = g.attributes.fid || g.attributes.FID || g.attributes.OBJECTID;
-            const idx = app.points.findIndex(f =>
+            const idx = allEpisodes.findIndex(f =>
                 (f.attributes.fid || f.attributes.FID || f.attributes.OBJECTID) === fid
             );
-            if (idx !== -1) app.select(idx);
+            if (idx !== -1) selectEpisode(idx);
         });
     });
 
     view.on('pointer-move', e => {
         view.hitTest(e).then(r => {
             view.container.style.cursor =
-                r.results.length && r.results[0].graphic.layer === app.layer ? 'pointer' : '';
+                r.results.length && r.results[0].graphic.layer === podcastLayer ? 'pointer' : '';
         });
     });
 });
