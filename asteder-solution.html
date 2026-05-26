@@ -94,20 +94,20 @@ html, body {
     display: flex;
     align-items: center;
     padding: 0 16px;
-    height: 64px;
+    height: 56px;
     flex-shrink: 0;
     gap: 14px;
     border-bottom: 1px solid var(--color-sand-dark);
 }
 
 .player-icon {
-    width: 40px; height: 40px;
-    background: var(--color-accent);
+    width: 36px; height: 36px;
+    background: var(--color-forest);
     border-radius: var(--radius-md);
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0;
-    color: white; font-size: 18px;
 }
+.player-icon svg { width: 16px; height: 16px; color: var(--color-sage); }
 
 .player-info { flex: 1; min-width: 0; }
 
@@ -128,10 +128,6 @@ html, body {
     margin-top: 2px;
 }
 
-.player-actions {
-    display: flex; align-items: center; gap: 8px; flex-shrink: 0;
-}
-
 .close-btn {
     width: 32px; height: 32px;
     border: 1px solid var(--color-sand-dark);
@@ -150,7 +146,7 @@ html, body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 16px;
+    padding: 8px 16px;
     flex-shrink: 0;
 }
 
@@ -206,18 +202,21 @@ html, body {
 
     <!-- Title bar -->
     <div class="player-bar">
-        <div class="player-icon">▶</div>
+        <div class="player-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 18v-6a9 9 0 0 1 18 0v6"/>
+                <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/>
+            </svg>
+        </div>
         <div class="player-info">
             <span id="episodeTitle">Select an episode</span>
             <span id="episodeDownloads"></span>
         </div>
-        <div class="player-actions">
-            <button class="close-btn" onclick="closePlayer()" title="Close">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M18 6L6 18M6 6l12 12"/>
-                </svg>
-            </button>
-        </div>
+        <button class="close-btn" onclick="closePlayer()" title="Close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+        </button>
     </div>
 
     <!-- Counter + prev/next -->
