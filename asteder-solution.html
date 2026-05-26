@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Åsteder — Solution Map</title>
+    <link rel="stylesheet" href="https://js.arcgis.com/4.27/esri/themes/light/main.css">
+    <script src="https://js.arcgis.com/4.27/"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Source+Sans+3:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html, body {
+    height: 100%; height: 100dvh;
+    overflow: hidden;
+    font-family: 'Source Sans 3', system-ui, sans-serif;
+    background: #F4EDE4;
+    -webkit-font-smoothing: antialiased;
+}
+
+:root {
+    --color-forest: #1B3A2D;
+    --color-forest-light: #2C5F41;
+    --color-sage: #7A9E7E;
+    --color-sage-light: #B5CDB6;
+    --color-sand: #F4EDE4;
+    --color-sand-dark: #E8DFD3;
+    --color-text: #2D2A26;
+    --color-text-secondary: #6B6560;
+    --color-white: #FEFDFB;
+    --color-accent: #C85A3A;
+    --font-display: 'DM Serif Display', Georgia, serif;
+    --font-body: 'Source Sans 3', sans-serif;
+    --player-height: 310px;
+    --radius-sm: 6px;
+    --radius-md: 12px;
+    --shadow-up: 0 -4px 20px rgba(27,58,45,0.12);
+    --transition-smooth: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Map fullscreen */
+#viewDiv {
+    position: fixed;
+    inset: 0;
+    bottom: 0;
+    transition: bottom var(--transition-smooth);
+}
+
+body.player-open #viewDiv {
+    bottom: var(--player-height);
+}
+
+/* Loading */
+#loading {
+    position: fixed;
+    inset: 0;
+    background: var(--color-sand);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    transition: opacity 0.6s;
+}
+#loading.hidden { opacity: 0; pointer-events: none; }
+.loader-ring {
+    width: 32px; height: 32px;
+    border: 2.5px solid var(--color-sand-dark);
+    border-top-color: var(--color-forest);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Hide default ArcGIS popup */
+.esri-popup { display: none !important; }
+
+/* ── PLAYER PANEL ── */
+#audioPanel {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: var(--player-height);
+    background: var(--color-white);
+    border-top: 1px solid var(--color-sand-dark);
+    box-shadow: var(--shadow-up);
+    z-index: 990;
+    display: flex;
+    flex-direction: column;
+    transform: translateY(100%);
+    transition: transform var(--transition-smooth);
+}
+
+#audioPanel.visible {
+    transform: translateY(0);
+}
+
+/* Top bar — title + actions */
+.player-bar {
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    height: 64px;
+    flex-shrink: 0;
+    gap: 14px;
+    border-bottom: 1px solid var(--color-sand-dark);
+}
+
+.player-icon {
+    width: 40px; height: 40px;
+    background: var(--color-accent);
+    border-radius: var(--radius-md);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    color: white; font-size: 18px;
+}
+
+.player-info { flex: 1; min-width: 0; }
+
+#episodeTitle {
+    font-family: var(--font-display);
+    font-size: 15px;
+    color: var(--color-forest);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.3;
+}
+
+#episodeDownloads {
+    font-size: 11px;
+    color: var(--color-text-secondary);
+    display: block;
+    margin-top: 2px;
+}
+
+.player-actions {
+    display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+}
+
+.close-btn {
+    width: 32px; height: 32px;
+    border: 1px solid var(--color-sand-dark);
+    background: var(--color-white);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: var(--transition-fast);
+    color: var(--color-text-secondary);
+}
+.close-btn:hover { background: var(--color-sand); color: var(--color-accent); }
+.close-btn svg { width: 16px; height: 16px; }
+
+/* Nav row — counter + prev/next */
+.player-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    flex-shrink: 0;
+}
+
+.player-counter {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    letter-spacing: 0.04em;
+}
+
+.player-nav-btns { display: flex; gap: 6px; }
+
+.player-nav-btn {
+    width: 32px; height: 32px;
+    border: 1px solid var(--color-sand-dark);
+    background: var(--color-white);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: var(--transition-fast);
+    color: var(--color-text);
+}
+.player-nav-btn:hover:not(:disabled) { background: var(--color-sand); border-color: var(--color-sage-light); }
+.player-nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.player-nav-btn svg { width: 16px; height: 16px; }
+
+/* Podbean embed */
+.player-embed {
+    flex: 1;
+    padding: 0 16px 12px;
+    overflow: hidden;
+}
+
+.player-embed iframe {
+    border-radius: var(--radius-sm);
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+/* ArcGIS overrides */
+.esri-ui-corner { margin: 10px; }
+.esri-widget--button { border-radius: var(--radius-sm) !important; }
+    </style>
+</head>
+<body>
+
+<div id="loading"><div class="loader-ring"></div></div>
+<div id="viewDiv"></div>
+
+<!-- Audio Player Panel -->
+<div id="audioPanel">
+
+    <!-- Title bar -->
+    <div class="player-bar">
+        <div class="player-icon">▶</div>
+        <div class="player-info">
+            <span id="episodeTitle">Select an episode</span>
+            <span id="episodeDownloads"></span>
+        </div>
+        <div class="player-actions">
+            <button class="close-btn" onclick="closePlayer()" title="Close">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Counter + prev/next -->
+    <div class="player-nav">
+        <span class="player-counter" id="playerCounter"></span>
+        <div class="player-nav-btns">
+            <button class="player-nav-btn" id="playerPrevBtn" onclick="navigatePrevious()" disabled>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+            </button>
+            <button class="player-nav-btn" id="playerNextBtn" onclick="navigateNext()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Podbean iframe -->
+    <div class="player-embed">
+        <div id="playerContainer"></div>
+    </div>
+
+</div>
+
+<script>
+// ── STATE ──
+let allEpisodes = [];
+let currentIdx = -1;
+let mapView = null;
+let podcastLayer = null;
+let tooltipLayer = null;
+let highlightHandle = null;
+let GraphicClass = null;
+
+// ── PLAYER ──
+function showPlayer(attrs, idx) {
+    const fullName = attrs.name || 'Episode';
+    const displayName = fullName.replace(/\s*\(#\d+\)\s*$/, '').trim();
+
+    // Downloads
+    const rawDl = attrs.downloads || '';
+    let displayDl = '';
+    if (rawDl) {
+        const num = parseFloat(rawDl.replace('t', ''));
+        if (!isNaN(num)) displayDl = Math.round(num * 1000).toLocaleString('en-GB') + ' downloads';
+    }
+
+    document.getElementById('episodeTitle').textContent = displayName;
+    document.getElementById('episodeDownloads').textContent = displayDl;
+    document.getElementById('playerCounter').textContent = (idx + 1) + ' / ' + allEpisodes.length;
+    document.getElementById('playerPrevBtn').disabled = (idx === 0);
+    document.getElementById('playerNextBtn').disabled = (idx === allEpisodes.length - 1);
+
+    // Podbean embed
+    const shareLink = attrs.link;
+    if (shareLink) {
+        const episodeId = shareLink.split('/').pop().replace('pb-', '');
+        const embedUrl = `https://www.podbean.com/player-v2/?from=embed&i=${episodeId}-pb&square=1&share=1&download=1&fonts=Arial&skin=1&font-color=auto&btn-skin=7&size=300`;
+        document.getElementById('playerContainer').innerHTML =
+            `<iframe title="${displayName}" allowtransparency="true"
+                height="100%" width="100%"
+                scrolling="no" src="${embedUrl}" loading="lazy" allowfullscreen=""></iframe>`;
+    } else {
+        document.getElementById('playerContainer').innerHTML =
+            `<p style="color:var(--color-text-secondary);padding:20px;text-align:center;">Audio not available</p>`;
+    }
+
+    // Show panel
+    document.getElementById('audioPanel').classList.add('visible');
+    document.body.classList.add('player-open');
+
+    // Update map padding
+    setTimeout(updateMapPadding, 50);
+}
+
+function updateMapPadding() {
+    if (!mapView) return;
+    const panel = document.getElementById('audioPanel');
+    if (panel.classList.contains('visible')) {
+        mapView.padding = { bottom: panel.offsetHeight };
+    } else {
+        mapView.padding = { bottom: 0 };
+    }
+}
+
+function closePlayer() {
+    document.getElementById('audioPanel').classList.remove('visible');
+    document.body.classList.remove('player-open');
+    document.getElementById('playerContainer').innerHTML = '';
+    if (tooltipLayer) tooltipLayer.removeAll();
+    if (highlightHandle) { highlightHandle.remove(); highlightHandle = null; }
+    currentIdx = -1;
+    updateMapPadding();
+
+    // Zoom back to full extent
+    if (podcastLayer && mapView) {
+        const q = podcastLayer.createQuery();
+        q.where = '1=1';
+        podcastLayer.queryExtent(q).then(result => {
+            if (result.extent) mapView.goTo(result.extent.expand(1.2), { duration: 600 });
+        });
+    }
+}
+
+function selectEpisode(idx) {
+    if (idx < 0 || idx >= allEpisodes.length) return;
+    currentIdx = idx;
+    const feature = allEpisodes[idx];
+    const attrs = feature.attributes;
+
+    showPlayer(attrs, idx);
+
+    // Tooltip label
+    if (tooltipLayer && GraphicClass) {
+        tooltipLayer.removeAll();
+        const name = (attrs.name || '').replace(/\s*\(#\d+\)\s*$/, '').trim();
+        tooltipLayer.add(new GraphicClass({
+            geometry: feature.geometry,
+            symbol: {
+                type: 'simple-marker',
+                color: [74, 127, 158, 0.25],
+                size: 26,
+                outline: { color: [74, 127, 158, 0.9], width: 3 }
+            }
+        }));
+        tooltipLayer.add(new GraphicClass({
+            geometry: feature.geometry,
+            symbol: {
+                type: 'text', color: '#1B3A2D', text: name,
+                font: { size: 11, weight: 'bold', family: 'Source Sans 3, sans-serif' },
+                haloColor: 'white', haloSize: 2, yoffset: -25
+            }
+        }));
+    }
+
+    // Highlight
+    if (highlightHandle) highlightHandle.remove();
+    if (mapView && podcastLayer) {
+        mapView.whenLayerView(podcastLayer).then(lv => {
+            highlightHandle = lv.highlight(feature);
+        });
+    }
+
+    // Fly to point
+    setTimeout(() => {
+        updateMapPadding();
+        if (mapView) mapView.goTo({ target: feature.geometry, zoom: 12 }, { duration: 700 });
+    }, 100);
+}
+
+function navigatePrevious() {
+    if (currentIdx > 0) selectEpisode(currentIdx - 1);
+}
+
+function navigateNext() {
+    if (currentIdx < allEpisodes.length - 1) selectEpisode(currentIdx + 1);
+}
+
+// ── ARCGIS ──
+require([
+    "esri/WebMap", "esri/views/MapView", "esri/widgets/ScaleBar",
+    "esri/Graphic", "esri/layers/GraphicsLayer"
+], function(WebMap, MapView, ScaleBar, Graphic, GraphicsLayer) {
+
+    GraphicClass = Graphic;
+
+    const webmap = new WebMap({ portalItem: { id: "28cbdfd16ee14463b5e537e734c63b4f" } });
+    const view = new MapView({
+        container: "viewDiv",
+        map: webmap,
+        constraints: { minZoom: 8, maxZoom: 16 }
+    });
+    mapView = view;
+
+    view.when(() => {
+        // Hide loader
+        const loader = document.getElementById('loading');
+        loader.classList.add('hidden');
+        setTimeout(() => loader.style.display = 'none', 700);
+
+        // Tooltip layer
+        tooltipLayer = new GraphicsLayer();
+        webmap.add(tooltipLayer);
+
+        // Find podcast layer
+        webmap.layers.forEach(l => {
+            if (l.title && l.title.toLowerCase().includes('podcast')) podcastLayer = l;
+        });
+
+        if (podcastLayer) {
+            podcastLayer.popupEnabled = false;
+            const q = podcastLayer.createQuery();
+            q.where = '1=1';
+            q.outFields = ['*'];
+            q.orderByFields = ['ID ASC'];
+            podcastLayer.queryFeatures(q).then(r => {
+                allEpisodes = r.features;
+                // Auto-open first episode
+                if (allEpisodes.length) selectEpisode(0);
+            });
+        }
+
+        view.ui.move("zoom", "top-right");
+        view.ui.add(new ScaleBar({ view, unit: 'metric' }), 'bottom-left');
+    });
+
+    // Click on map point
+    view.on('click', e => {
+        view.hitTest(e).then(r => {
+            if (!r.results.length) return;
+            const g = r.results[0].graphic;
+            if (g.layer !== podcastLayer) return;
+            const fid = g.attributes.fid || g.attributes.FID || g.attributes.OBJECTID;
+            const idx = allEpisodes.findIndex(f =>
+                (f.attributes.fid || f.attributes.FID || f.attributes.OBJECTID) === fid
+            );
+            if (idx !== -1) selectEpisode(idx);
+        });
+    });
+
+    // Pointer cursor on hover
+    view.on('pointer-move', e => {
+        view.hitTest(e).then(r => {
+            view.container.style.cursor =
+                r.results.length && r.results[0].graphic.layer === podcastLayer ? 'pointer' : '';
+        });
+    });
+});
+</script>
+</body>
+</html>
