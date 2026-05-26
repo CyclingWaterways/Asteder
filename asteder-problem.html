@@ -6,31 +6,175 @@
     <title>Åsteder — Problem Map</title>
     <link rel="stylesheet" href="https://js.arcgis.com/4.27/esri/themes/light/main.css">
     <script src="https://js.arcgis.com/4.27/"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Source+Sans+3:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-html, body { height: 100%; height: 100dvh; overflow: hidden; }
+html, body {
+    height: 100%; height: 100dvh;
+    overflow: hidden;
+    font-family: 'Source Sans 3', system-ui, sans-serif;
+    background: #F4EDE4;
+    -webkit-font-smoothing: antialiased;
+}
+:root {
+    --color-forest: #1B3A2D;
+    --color-sage: #7A9E7E;
+    --color-sage-light: #B5CDB6;
+    --color-sand: #F4EDE4;
+    --color-sand-dark: #E8DFD3;
+    --color-text: #2D2A26;
+    --color-text-secondary: #6B6560;
+    --color-white: #FEFDFB;
+    --color-accent: #C85A3A;
+    --font-display: 'DM Serif Display', Georgia, serif;
+    --panel-height: 310px;
+    --radius-sm: 6px;
+    --radius-md: 12px;
+    --shadow-up: 0 -4px 20px rgba(27,58,45,0.12);
+    --transition-smooth: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
 
 #viewDiv { position: fixed; inset: 0; }
 
 #loading {
     position: fixed; inset: 0;
-    background: #F4EDE4;
+    background: var(--color-sand);
     display: flex; align-items: center; justify-content: center;
     z-index: 9999; transition: opacity 0.6s;
 }
 #loading.hidden { opacity: 0; pointer-events: none; }
 .loader-ring {
     width: 32px; height: 32px;
-    border: 2.5px solid #E8DFD3;
-    border-top-color: #1B3A2D;
+    border: 2.5px solid var(--color-sand-dark);
+    border-top-color: var(--color-forest);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
-
 .esri-popup { display: none !important; }
+
+/* PANEL */
+#locationPanel {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: var(--panel-height);
+    background: var(--color-white);
+    border-top: 1px solid var(--color-sand-dark);
+    box-shadow: var(--shadow-up);
+    z-index: 990;
+    display: flex;
+    flex-direction: column;
+    transform: translateY(100%);
+    transition: transform var(--transition-smooth);
+}
+#locationPanel.visible { transform: translateY(0); }
+
+/* Title bar */
+.panel-bar {
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    height: 56px;
+    flex-shrink: 0;
+    gap: 14px;
+    border-bottom: 1px solid var(--color-sand-dark);
+}
+.panel-icon {
+    width: 36px; height: 36px;
+    background: #9E9990;
+    border-radius: var(--radius-md);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}
+.panel-icon svg { width: 16px; height: 16px; color: #FEFDFB; }
+.panel-info { flex: 1; min-width: 0; }
+#locationTitle {
+    font-family: var(--font-display);
+    font-size: 15px;
+    color: var(--color-forest);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.3;
+}
+#locationSub {
+    font-size: 11px;
+    color: var(--color-text-secondary);
+    display: block;
+    margin-top: 2px;
+}
+.close-btn {
+    width: 32px; height: 32px;
+    border: 1px solid var(--color-sand-dark);
+    background: var(--color-white);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: var(--transition-fast);
+    color: var(--color-text-secondary);
+}
+.close-btn:hover { background: var(--color-sand); color: var(--color-accent); }
+.close-btn svg { width: 16px; height: 16px; }
+
+/* Silent message */
+.panel-content {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 32px;
+}
+.silent-message {
+    text-align: center;
+    color: var(--color-text-secondary);
+}
+.silent-message .silent-icon {
+    font-size: 32px;
+    margin-bottom: 12px;
+    opacity: 0.4;
+}
+.silent-message p {
+    font-size: 13px;
+    font-weight: 300;
+    line-height: 1.6;
+    font-style: italic;
+}
+
+/* Nav */
+.panel-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    border-top: 1px solid var(--color-sand-dark);
+    flex-shrink: 0;
+}
+.panel-counter {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    letter-spacing: 0.04em;
+}
+.panel-nav-btns { display: flex; gap: 6px; }
+.panel-nav-btn {
+    width: 32px; height: 32px;
+    border: 1px solid var(--color-sand-dark);
+    background: var(--color-white);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: var(--transition-fast);
+    color: var(--color-text);
+}
+.panel-nav-btn:hover:not(:disabled) { background: var(--color-sand); border-color: var(--color-sage-light); }
+.panel-nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.panel-nav-btn svg { width: 16px; height: 16px; }
+
 .esri-ui-corner { margin: 10px; }
-.esri-widget--button { border-radius: 6px !important; }
+.esri-widget--button { border-radius: var(--radius-sm) !important; }
     </style>
 </head>
 <body>
@@ -38,32 +182,178 @@ html, body { height: 100%; height: 100dvh; overflow: hidden; }
 <div id="loading"><div class="loader-ring"></div></div>
 <div id="viewDiv"></div>
 
-<script>
-require([
-    "esri/WebMap", "esri/views/MapView", "esri/widgets/ScaleBar"
-], function(WebMap, MapView, ScaleBar) {
+<div id="locationPanel">
+    <div class="panel-bar">
+        <div class="panel-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+        </div>
+        <div class="panel-info">
+            <span id="locationTitle">Location</span>
+            <span id="locationSub">No story available</span>
+        </div>
+        <button class="close-btn" onclick="closePanel()" title="Close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+        </button>
+    </div>
 
+    <div class="panel-content">
+        <div class="silent-message">
+            <div class="silent-icon">🔇</div>
+            <p>This place has a story.<br>It just hasn't been told yet.</p>
+        </div>
+    </div>
+
+    <div class="panel-nav">
+        <span class="panel-counter" id="panelCounter"></span>
+        <div class="panel-nav-btns">
+            <button class="panel-nav-btn" id="prevBtn" onclick="navigatePrevious()" disabled>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+            </button>
+            <button class="panel-nav-btn" id="nextBtn" onclick="navigateNext()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+let allLocations = [];
+let currentIdx = -1;
+let mapView = null;
+let podcastLayer = null;
+let tooltipLayer = null;
+let highlightHandle = null;
+let GraphicClass = null;
+
+function showPanel(attrs, idx) {
+    const fullName = attrs.name || 'Location';
+    const displayName = fullName.replace(/\s*\(#\d+\)\s*$/, '').trim();
+    const id = attrs.ID || attrs.id || (idx + 1);
+
+    document.getElementById('locationTitle').textContent = displayName;
+    document.getElementById('panelCounter').textContent = id + ' / ' + allLocations.length;
+    document.getElementById('prevBtn').disabled = (idx === 0);
+    document.getElementById('nextBtn').disabled = (idx === allLocations.length - 1);
+
+    document.getElementById('locationPanel').classList.add('visible');
+    setTimeout(updateMapPadding, 450);
+}
+
+function updateMapPadding() {
+    if (!mapView) return;
+    const panel = document.getElementById('locationPanel');
+    mapView.padding = { bottom: panel.classList.contains('visible') ? panel.offsetHeight : 0 };
+}
+
+function closePanel() {
+    document.getElementById('locationPanel').classList.remove('visible');
+    if (tooltipLayer) tooltipLayer.removeAll();
+    if (highlightHandle) { highlightHandle.remove(); highlightHandle = null; }
+    currentIdx = -1;
+    updateMapPadding();
+    if (podcastLayer && mapView) {
+        const q = podcastLayer.createQuery();
+        q.where = '1=1';
+        podcastLayer.queryExtent(q).then(r => {
+            if (r.extent) mapView.goTo(r.extent.expand(1.2), { duration: 600 });
+        });
+    }
+}
+
+function selectLocation(idx) {
+    if (idx < 0 || idx >= allLocations.length) return;
+    currentIdx = idx;
+    const feature = allLocations[idx];
+    const attrs = feature.attributes;
+
+    showPanel(attrs, idx);
+
+    if (tooltipLayer && GraphicClass) {
+        tooltipLayer.removeAll();
+        const name = (attrs.name || '').replace(/\s*\(#\d+\)\s*$/, '').trim();
+        // Small grey pulsing marker
+        tooltipLayer.add(new GraphicClass({
+            geometry: feature.geometry,
+            symbol: {
+                type: 'simple-marker',
+                color: [158, 153, 144, 0.2],
+                size: 16,
+                outline: { color: [158, 153, 144, 0.8], width: 2 }
+            }
+        }));
+        tooltipLayer.add(new GraphicClass({
+            geometry: feature.geometry,
+            symbol: {
+                type: 'text', color: '#6B6560', text: name,
+                font: { size: 11, weight: 'bold', family: 'Source Sans 3, sans-serif' },
+                haloColor: 'white', haloSize: 2, yoffset: -20
+            }
+        }));
+    }
+
+    if (highlightHandle) highlightHandle.remove();
+    if (mapView && podcastLayer) {
+        mapView.whenLayerView(podcastLayer).then(lv => {
+            highlightHandle = lv.highlight(feature);
+        });
+    }
+
+    setTimeout(() => {
+        updateMapPadding();
+        if (mapView) mapView.goTo({ target: feature.geometry, zoom: 12 }, { duration: 700 });
+    }, 450);
+}
+
+function navigatePrevious() { if (currentIdx > 0) selectLocation(currentIdx - 1); }
+function navigateNext() { if (currentIdx < allLocations.length - 1) selectLocation(currentIdx + 1); }
+
+require([
+    "esri/WebMap", "esri/views/MapView", "esri/widgets/ScaleBar",
+    "esri/Graphic", "esri/layers/GraphicsLayer"
+], function(WebMap, MapView, ScaleBar, Graphic, GraphicsLayer) {
+    GraphicClass = Graphic;
     const webmap = new WebMap({ portalItem: { id: "28cbdfd16ee14463b5e537e734c63b4f" } });
-    const view = new MapView({
-        container: "viewDiv",
-        map: webmap,
-        constraints: { minZoom: 8, maxZoom: 16 }
-    });
+    const view = new MapView({ container: "viewDiv", map: webmap, constraints: { minZoom: 8, maxZoom: 16 } });
+    mapView = view;
 
     view.when(() => {
         const loader = document.getElementById('loading');
         loader.classList.add('hidden');
         setTimeout(() => loader.style.display = 'none', 700);
 
-        // Hide podcast layer
+        tooltipLayer = new GraphicsLayer();
+        webmap.add(tooltipLayer);
+
         webmap.layers.forEach(l => {
             if (l.title && l.title.toLowerCase().includes('podcast')) {
+                podcastLayer = l;
                 l.visible = false;
             }
         });
 
+        if (podcastLayer) {
+            const q = podcastLayer.createQuery();
+            q.where = '1=1'; q.outFields = ['*']; q.orderByFields = ['ID ASC'];
+            podcastLayer.queryFeatures(q).then(r => {
+                allLocations = r.features;
+                if (allLocations.length) selectLocation(0);
+            });
+        }
+
         view.ui.move("zoom", "top-right");
         view.ui.add(new ScaleBar({ view, unit: 'metric' }), 'bottom-left');
+    });
+
+    view.on('pointer-move', e => {
+        view.hitTest(e).then(r => {
+            view.container.style.cursor = '';
+        });
     });
 });
 </script>
