@@ -272,7 +272,7 @@ function showPlayer(attrs, idx) {
     const shareLink = attrs.link;
     if (shareLink) {
         const episodeId = shareLink.split('/').pop().replace('pb-', '');
-        const embedUrl = `https://www.podbean.com/player-v2/?from=embed&i=${episodeId}-pb&square=1&share=1&download=1&fonts=Arial&skin=1&font-color=auto&btn-skin=7&size=300`;
+        const embedUrl = `https://www.podbean.com/player-v2/?from=embed&i=${episodeId}-pb&square=1&share=1&download=1&fonts=Arial&skin=2&font-color=auto&btn-skin=3&size=300`;
         document.getElementById('playerContainer').innerHTML =
             `<iframe title="${displayName}" allowtransparency="true"
                 height="100%" width="100%"
